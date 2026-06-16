@@ -550,11 +550,12 @@ async function doSnap() {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 10,
+        system: 'You are a certified Business Analysis expert with deep knowledge of the BABOK Guide V3 (Business Analysis Body of Knowledge, version 3). You know all knowledge areas, tasks, techniques, and concepts in BABOK V3 thoroughly. When answering multiple choice questions, apply BABOK V3 principles precisely.',
         messages: [{
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
-            { type: 'text', text: 'This is a multiple choice question. Read it carefully and identify the single correct answer. Reply with ONLY the letter of the correct answer (e.g. A, B, C, or D). Nothing else — no explanation, no punctuation, just the letter.' }
+            { type: 'text', text: 'This is a BABOK V3 multiple choice question. Read it carefully and identify the single correct answer based on BABOK V3. Reply with ONLY the letter of the correct answer (e.g. A, B, C, or D). Nothing else — no explanation, no punctuation, just the letter.' }
           ]
         }]
       })
