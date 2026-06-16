@@ -228,8 +228,8 @@ button.secondary:disabled { opacity: 0.35; cursor: not-allowed; }
 </header>
 
 <div id="key-panel">
-  <label>Anthropic API Key (нужен само на Телефон 2 – Камера)</label>
-  <input id="key-input" type="password" placeholder="sk-ant-..." autocomplete="off" />
+  <label>OpenAI API Key (нужен само на Телефон 2 – Камера)</label>
+  <input id="key-input" type="password" placeholder="sk-..." autocomplete="off" />
   <button id="save-key">Запази</button>
 </div>
 
@@ -539,32 +539,35 @@ async function doSnap() {
 
   try {
     const base64 = dataUrl.split(',')[1];
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+        'Authorization': 'Bearer ' + key
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'gpt-4o',
         max_tokens: 10,
-        system: 'You are a certified Business Analysis expert with deep knowledge of the BABOK Guide V3 (Business Analysis Body of Knowledge, version 3). You know all knowledge areas, tasks, techniques, and concepts in BABOK V3 thoroughly. When answering multiple choice questions, apply BABOK V3 principles precisely.',
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
-            { type: 'text', text: 'This is a BABOK V3 multiple choice question. Read it carefully and identify the single correct answer based on BABOK V3. Reply with ONLY the letter of the correct answer (e.g. A, B, C, or D). Nothing else — no explanation, no punctuation, just the letter.' }
-          ]
-        }]
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a certified Business Analysis expert with deep knowledge of the BABOK Guide V3 (Business Analysis Body of Knowledge, version 3). You know all knowledge areas, tasks, techniques, and concepts in BABOK V3 thoroughly. When answering multiple choice questions, apply BABOK V3 principles precisely.'
+          },
+          {
+            role: 'user',
+            content: [
+              { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + base64 } },
+              { type: 'text', text: 'This is a BABOK V3 multiple choice question. Read it carefully and identify the single correct answer based on BABOK V3. Reply with ONLY the letter of the correct answer (e.g. A, B, C, or D). Nothing else — no explanation, no punctuation, just the letter.' }
+            ]
+          }
+        ]
       })
     });
 
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error?.message || 'API грешка');
 
-    const raw = data.content?.[0]?.text?.trim() || '';
+    const raw = data.choices?.[0]?.message?.content?.trim() || '';
     const letter = raw.match(/^[A-Ea-e]$/i)?.[0]?.toUpperCase() || null;
 
     $('spinner').className = '';
