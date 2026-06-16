@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>MCQ Analyzer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0a0a0f;
+  --surface: #13131a;
+  --border: #22223a;
+  --accent: #5b6af0;
+  --accent-glow: rgba(91,106,240,0.25);
+  --text: #e8e8f0;
+  --muted: #5a5a7a;
+  --success: #22c55e;
+  --error: #ef4444;
+  --warn: #f59e0b;
+  --font: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 16px 40px;
+  gap: 16px;
+}
+header {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo { font-size: 13px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); }
+.header-right { display: flex; gap: 8px; align-items: center; }
+.badge {
+  font-size: 11px; color: var(--muted); cursor: pointer;
+  border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; transition: border-color 0.2s;
+}
+.badge:hover { border-color: var(--accent); color: var(--text); }
+.mode-badge {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  border-radius: 6px; padding: 4px 10px;
+}
+.mode-badge.camera { background: rgba(91,106,240,0.15); color: var(--accent); border: 1px solid var(--accent); }
+.mode-badge.controller { background: rgba(245,158,11,0.15); color: var(--warn); border: 1px solid var(--warn); }
+
+/* Mode selector */
+#mode-select {
+  width: 100%; max-width: 480px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+  padding: 28px 24px; display: flex; flex-direction: column; align-items: center; gap: 16px;
+}
+#mode-select h2 { font-size: 20px; font-weight: 700; }
+#mode-select p { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.6; }
+.mode-btns { display: flex; gap: 12px; width: 100%; }
+.mode-btn {
+  flex: 1; border: 1px solid var(--border); background: var(--bg);
+  color: var(--text); border-radius: 14px; padding: 18px 12px;
+  font-size: 14px; font-weight: 700; cursor: pointer; text-align: center;
+  display: flex; flex-direction: column; gap: 6px; align-items: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+.mode-btn:hover { border-color: var(--accent); background: var(--surface); }
+.mode-btn .icon { font-size: 28px; }
+.mode-btn .sub { font-size: 11px; color: var(--muted); font-weight: 400; }
+
+/* API key panel */
+#key-panel {
+  width: 100%; max-width: 480px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 14px; padding: 16px;
+  display: none; flex-direction: column; gap: 10px;
+}
+#key-panel.open { display: flex; }
+#key-panel label { font-size: 12px; color: var(--muted); }
+#key-input {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); font-size: 13px; padding: 10px 12px; width: 100%;
+  font-family: monospace; outline: none; transition: border-color 0.2s;
+}
+#key-input:focus { border-color: var(--accent); }
+#save-key {
+  align-self: flex-end; background: var(--accent); color: #fff;
+  border: none; border-radius: 8px; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+
+/* Connection panel */
+#conn-panel {
+  width: 100%; max-width: 480px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 14px; padding: 20px;
+  display: none; flex-direction: column; gap: 12px;
+}
+#conn-panel.open { display: flex; }
+#conn-panel label { font-size: 12px; color: var(--muted); }
+.peer-id-box {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 14px; font-family: monospace; font-size: 18px; font-weight: 700;
+  letter-spacing: 0.08em; color: var(--accent); text-align: center;
+}
+.peer-id-hint { font-size: 12px; color: var(--muted); text-align: center; }
+#peer-input {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); font-size: 18px; padding: 10px 12px; width: 100%;
+  font-family: monospace; outline: none; text-align: center; letter-spacing: 0.08em;
+  transition: border-color 0.2s; text-transform: uppercase;
+}
+#peer-input:focus { border-color: var(--accent); }
+#connect-btn {
+  background: var(--accent); color: #fff; border: none;
+  border-radius: 10px; padding: 12px; font-size: 15px; font-weight: 700; cursor: pointer; width: 100%;
+}
+#connect-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.conn-status {
+  display: flex; align-items: center; gap: 8px; font-size: 13px;
+}
+.dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0;
+  transition: background 0.3s;
+}
+.dot.green { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.dot.yellow { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+.dot.red { background: var(--error); }
+
+/* Camera area */
+#camera-wrap {
+  width: 100%; max-width: 480px; aspect-ratio: 4/3;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+  overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center;
+}
+video, canvas#preview {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 18px; display: block;
+}
+canvas#preview { display: none; position: absolute; top: 0; left: 0; }
+.cam-placeholder {
+  display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--muted);
+}
+.cam-placeholder svg { opacity: 0.35; }
+.cam-placeholder span { font-size: 13px; }
+
+/* Buttons */
+.btn-row { display: flex; gap: 12px; width: 100%; max-width: 480px; }
+button.primary {
+  flex: 1; background: var(--accent); color: #fff; border: none;
+  border-radius: 14px; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer;
+  letter-spacing: 0.02em; transition: opacity 0.15s, box-shadow 0.2s;
+  box-shadow: 0 0 0 0 var(--accent-glow);
+}
+button.primary:active { opacity: 0.85; }
+button.primary:disabled { opacity: 0.35; cursor: not-allowed; }
+button.primary.pulse { box-shadow: 0 0 24px 6px var(--accent-glow); }
+button.secondary {
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px 20px; font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: border-color 0.2s;
+}
+button.secondary:hover { border-color: var(--accent); }
+button.secondary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Result */
+#result-box {
+  width: 100%; max-width: 480px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 18px; padding: 28px 24px;
+  display: none; flex-direction: column; align-items: center; gap: 12px; transition: border-color 0.3s;
+}
+#result-box.visible { display: flex; }
+#result-box.ok { border-color: var(--success); }
+#result-box.err { border-color: var(--error); }
+#result-label { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+#result-answer {
+  font-size: 52px; font-weight: 800; letter-spacing: -0.02em;
+  color: var(--success); line-height: 1; text-align: center;
+}
+#result-answer.err { color: var(--error); font-size: 18px; font-weight: 600; }
+
+/* Controller UI */
+#controller-ui {
+  width: 100%; max-width: 480px; display: none; flex-direction: column; gap: 16px; align-items: center;
+}
+#controller-ui.visible { display: flex; }
+#snap-remote {
+  width: 100%; background: var(--accent); color: #fff; border: none;
+  border-radius: 18px; padding: 28px; font-size: 22px; font-weight: 800; cursor: pointer;
+  letter-spacing: 0.02em; transition: opacity 0.15s, transform 0.1s, box-shadow 0.2s;
+  box-shadow: 0 0 32px 8px var(--accent-glow);
+}
+#snap-remote:active { transform: scale(0.97); opacity: 0.85; }
+#snap-remote:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
+.remote-result {
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 18px; padding: 28px 24px; display: flex; flex-direction: column;
+  align-items: center; gap: 12px;
+}
+.remote-result.ok { border-color: var(--success); }
+.remote-result.err { border-color: var(--error); }
+#remote-answer {
+  font-size: 72px; font-weight: 800; color: var(--success); line-height: 1;
+}
+#remote-answer.err { color: var(--error); font-size: 20px; font-weight: 600; }
+#remote-label { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+
+/* Spinner */
+#spinner { display: none; width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+#spinner.visible { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#status { font-size: 13px; color: var(--muted); text-align: center; min-height: 18px; }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">MCQ · Analyzer</span>
+  <div class="header-right">
+    <span class="mode-badge" id="mode-indicator" style="display:none"></span>
+    <span class="badge" id="key-toggle">⚙ API Key</span>
+  </div>
+</header>
+
+<div id="key-panel">
+  <label>Anthropic API Key (нужен само на Телефон 2 – Камера)</label>
+  <input id="key-input" type="password" placeholder="sk-ant-..." autocomplete="off" />
+  <button id="save-key">Запази</button>
+</div>
+
+<!-- MODE SELECT -->
+<div id="mode-select">
+  <h2>Избери режим</h2>
+  <p>Телефон 2 (с камерата) избира <strong>Камера</strong>.<br>Телефон 1 (дистанционно) избира <strong>Контролер</strong>.</p>
+  <div class="mode-btns">
+    <button class="mode-btn" id="btn-mode-camera">
+      <span class="icon">📷</span>
+      <span>Камера</span>
+      <span class="sub">Телефон 2</span>
+    </button>
+    <button class="mode-btn" id="btn-mode-ctrl">
+      <span class="icon">🎮</span>
+      <span>Контролер</span>
+      <span class="sub">Телефон 1</span>
+    </button>
+  </div>
+</div>
+
+<!-- CONNECTION PANEL -->
+<div id="conn-panel">
+  <div class="conn-status">
+    <div class="dot" id="conn-dot"></div>
+    <span id="conn-text">Свързване към мрежата...</span>
+  </div>
+
+  <!-- Camera mode: show own ID -->
+  <div id="cam-conn-info" class="hidden">
+    <label>Твоят код (дай го на Телефон 1):</label>
+    <div class="peer-id-box" id="my-peer-id">—</div>
+    <div class="peer-id-hint">Изчаква връзка от контролера...</div>
+  </div>
+
+  <!-- Controller mode: enter camera ID -->
+  <div id="ctrl-conn-info" class="hidden">
+    <label>Въведи кода на Телефон 2 (Камера):</label>
+    <input id="peer-input" type="text" placeholder="XXXXXX" maxlength="6" />
+    <button id="connect-btn">Свържи се</button>
+  </div>
+</div>
+
+<!-- CAMERA UI -->
+<div id="result-box">
+  <div id="result-label">Верен отговор</div>
+  <div id="result-answer"></div>
+</div>
+
+<div id="camera-wrap" class="hidden">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="preview"></canvas>
+  <div class="cam-placeholder" id="placeholder">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+    <span>Камерата не е стартирана</span>
+  </div>
+</div>
+
+<div class="btn-row hidden" id="cam-btns">
+  <button class="primary" id="btn-snap" disabled>📷 Снимай</button>
+</div>
+
+<div id="spinner"></div>
+<div id="status"></div>
+
+<!-- CONTROLLER UI -->
+<div id="controller-ui">
+  <button id="snap-remote" disabled>📷 СНИМАЙ</button>
+  <div class="remote-result hidden" id="remote-result-box">
+    <div id="remote-label">Верен отговор</div>
+    <div id="remote-answer"></div>
+  </div>
+</div>
+
+<canvas id="offscreen" style="display:none"></canvas>
+
+<script>
+// ── helpers ──────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const loadKey = () => localStorage.getItem('mcq_api_key') || '';
+function setStatus(msg) { $('status').textContent = msg; }
+
+// ── API key ───────────────────────────────────────────────────────────────────
+$('key-input').value = loadKey();
+$('key-toggle').addEventListener('click', () => $('key-panel').classList.toggle('open'));
+$('save-key').addEventListener('click', () => {
+  localStorage.setItem('mcq_api_key', $('key-input').value.trim());
+  $('key-panel').classList.remove('open');
+  setStatus('API key запазен ✓');
+});
+
+// ── state ─────────────────────────────────────────────────────────────────────
+let mode = null;       // 'camera' | 'controller'
+let peer = null;
+let conn = null;
+let stream = null;
+let busy = false;
+
+// ── mode select ───────────────────────────────────────────────────────────────
+$('btn-mode-camera').addEventListener('click', () => startMode('camera'));
+$('btn-mode-ctrl').addEventListener('click', () => startMode('controller'));
+
+function startMode(m) {
+  mode = m;
+  $('mode-select').style.display = 'none';
+
+  const ind = $('mode-indicator');
+  ind.style.display = '';
+  if (m === 'camera') {
+    ind.textContent = '📷 Камера';
+    ind.className = 'mode-badge camera';
+  } else {
+    ind.textContent = '🎮 Контролер';
+    ind.className = 'mode-badge controller';
+  }
+
+  $('conn-panel').classList.add('open');
+  initPeer(m);
+}
+
+// ── PeerJS ────────────────────────────────────────────────────────────────────
+function genCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+function initPeer(m) {
+  const dot = $('conn-dot');
+  const txt = $('conn-text');
+  dot.className = 'dot yellow';
+  txt.textContent = 'Свързване към мрежата...';
+
+  if (m === 'camera') {
+    const myId = 'MCQ-' + genCode();
+    peer = new Peer(myId);
+
+    peer.on('open', id => {
+      dot.className = 'dot green';
+      txt.textContent = 'Готов. Изчаква контролер...';
+      $('cam-conn-info').classList.remove('hidden');
+      $('my-peer-id').textContent = id.replace('MCQ-', '');
+      // Start camera immediately
+      $('camera-wrap').classList.remove('hidden');
+      $('cam-btns').classList.remove('hidden');
+      startCamera();
+    });
+
+    peer.on('connection', c => {
+      conn = c;
+      setupCameraConn();
+    });
+
+  } else {
+    peer = new Peer();
+
+    peer.on('open', () => {
+      dot.className = 'dot yellow';
+      txt.textContent = 'Въведи кода на Камерата';
+      $('ctrl-conn-info').classList.remove('hidden');
+      $('connect-btn').disabled = false;
+    });
+
+    $('connect-btn').addEventListener('click', () => {
+      const code = $('peer-input').value.trim().toUpperCase();
+      if (!code) return;
+      dot.className = 'dot yellow';
+      txt.textContent = 'Свързване...';
+      $('connect-btn').disabled = true;
+      conn = peer.connect('MCQ-' + code, { reliable: true });
+      setupControllerConn();
+    });
+  }
+
+  peer.on('error', e => {
+    dot.className = 'dot red';
+    txt.textContent = 'Грешка: ' + e.message;
+  });
+}
+
+// ── Camera connection handler ─────────────────────────────────────────────────
+function setupCameraConn() {
+  const dot = $('conn-dot');
+  const txt = $('conn-text');
+
+  conn.on('open', () => {
+    dot.className = 'dot green';
+    txt.textContent = 'Контролерът е свързан ✓';
+  });
+
+  conn.on('data', data => {
+    if (data === 'snap') {
+      doSnap();
+    }
+  });
+
+  conn.on('close', () => {
+    dot.className = 'dot red';
+    txt.textContent = 'Контролерът се изключи';
+  });
+}
+
+// ── Controller connection handler ─────────────────────────────────────────────
+function setupControllerConn() {
+  const dot = $('conn-dot');
+  const txt = $('conn-text');
+
+  conn.on('open', () => {
+    dot.className = 'dot green';
+    txt.textContent = 'Свързан с камерата ✓';
+    $('ctrl-conn-info').classList.add('hidden');
+    $('controller-ui').classList.add('visible');
+    $('snap-remote').disabled = false;
+  });
+
+  conn.on('data', data => {
+    // Receive result from camera phone
+    if (data && data.type === 'result') {
+      const box = $('remote-result-box');
+      const ans = $('remote-answer');
+      const lbl = $('remote-label');
+      box.classList.remove('hidden', 'ok', 'err');
+      if (data.letter) {
+        ans.textContent = data.letter;
+        ans.className = '';
+        lbl.textContent = 'Верен отговор';
+        box.classList.add('ok');
+      } else {
+        ans.textContent = data.error || '?';
+        ans.className = 'err';
+        lbl.textContent = 'Грешка';
+        box.classList.add('err');
+      }
+      $('snap-remote').disabled = false;
+      $('snap-remote').textContent = '📷 СНИМАЙ';
+    }
+  });
+
+  conn.on('close', () => {
+    dot.className = 'dot red';
+    txt.textContent = 'Камерата се изключи';
+    $('snap-remote').disabled = true;
+  });
+}
+
+// ── Remote trigger button ─────────────────────────────────────────────────────
+$('snap-remote').addEventListener('click', () => {
+  if (!conn) return;
+  $('snap-remote').disabled = true;
+  $('snap-remote').textContent = '⏳ Анализирам...';
+  $('remote-result-box').classList.add('hidden');
+  conn.send('snap');
+});
+
+// ── Camera ────────────────────────────────────────────────────────────────────
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    });
+    $('video').srcObject = stream;
+    $('video').style.display = 'block';
+    $('placeholder').style.display = 'none';
+    $('btn-start').textContent = '■ Стоп';
+    $('btn-snap').disabled = false;
+    $('btn-snap').classList.add('pulse');
+    setStatus('Готов. Насочи към въпроса.');
+  } catch (e) {
+    setStatus('Грешка при достъп до камерата');
+  }
+}
+
+
+
+$('btn-snap').addEventListener('click', () => doSnap());
+
+// ── Snap & Analyze ────────────────────────────────────────────────────────────
+async function doSnap() {
+  if (!stream || busy) return;
+  const key = loadKey();
+  if (!key) { setStatus('Въведи API key първо'); $('key-panel').classList.add('open'); return; }
+
+  busy = true;
+  $('btn-snap').disabled = true;
+
+  const video = $('video');
+  const offscreen = $('offscreen');
+  const preview = $('preview');
+
+  offscreen.width = video.videoWidth;
+  offscreen.height = video.videoHeight;
+  offscreen.getContext('2d').drawImage(video, 0, 0);
+  const dataUrl = offscreen.toDataURL('image/jpeg', 0.92);
+
+  preview.width = offscreen.width;
+  preview.height = offscreen.height;
+  preview.getContext('2d').drawImage(offscreen, 0, 0);
+  preview.style.display = 'block';
+  video.style.display = 'none';
+
+  $('result-box').className = '';
+  $('result-box').style.display = 'none';
+  setStatus('Анализирам...');
+  $('spinner').className = 'visible';
+
+  try {
+    const base64 = dataUrl.split(',')[1];
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 10,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
+            { type: 'text', text: 'This is a multiple choice question. Read it carefully and identify the single correct answer. Reply with ONLY the letter of the correct answer (e.g. A, B, C, or D). Nothing else — no explanation, no punctuation, just the letter.' }
+          ]
+        }]
+      })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || 'API грешка');
+
+    const raw = data.content?.[0]?.text?.trim() || '';
+    const letter = raw.match(/^[A-Ea-e]$/i)?.[0]?.toUpperCase() || null;
+
+    $('spinner').className = '';
+    if (letter) {
+      $('result-answer').textContent = letter;
+      $('result-answer').className = '';
+      $('result-label').textContent = 'Верен отговор';
+      $('result-box').className = 'visible ok';
+    } else {
+      $('result-answer').textContent = raw || '?';
+      $('result-answer').className = 'err';
+      $('result-label').textContent = 'Резултат';
+      $('result-box').className = 'visible err';
+    }
+
+    // Send result to controller if connected
+    if (conn && conn.open) {
+      conn.send({ type: 'result', letter, error: letter ? null : (raw || '?') });
+    }
+
+    setStatus('');
+  } catch (e) {
+    $('spinner').className = '';
+    $('result-answer').textContent = e.message;
+    $('result-answer').className = 'err';
+    $('result-label').textContent = 'Грешка';
+    $('result-box').className = 'visible err';
+    setStatus('');
+    if (conn && conn.open) conn.send({ type: 'result', letter: null, error: e.message });
+  }
+
+  preview.style.display = 'none';
+  video.style.display = 'block';
+  $('btn-snap').disabled = false;
+  busy = false;
+}
+</script>
+</body>
+</html>
