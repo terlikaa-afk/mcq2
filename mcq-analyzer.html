@@ -274,7 +274,7 @@ button.secondary:disabled { opacity: 0.35; cursor: not-allowed; }
 </div>
 
 <!-- CAMERA UI -->
-<div id="result-box">
+<div id="result-box" style="display:none">
   <div id="result-label">Верен отговор</div>
   <div id="result-answer"></div>
 </div>
@@ -572,11 +572,13 @@ async function doSnap() {
       $('result-answer').className = '';
       $('result-label').textContent = 'Верен отговор';
       $('result-box').className = 'visible ok';
+      $('result-box').style.display = 'flex';
     } else {
       $('result-answer').textContent = raw || '?';
       $('result-answer').className = 'err';
       $('result-label').textContent = 'Резултат';
       $('result-box').className = 'visible err';
+      $('result-box').style.display = 'flex';
     }
 
     // Send result to controller if connected
@@ -591,6 +593,7 @@ async function doSnap() {
     $('result-answer').className = 'err';
     $('result-label').textContent = 'Грешка';
     $('result-box').className = 'visible err';
+    $('result-box').style.display = 'flex';
     setStatus('');
     if (conn && conn.open) conn.send({ type: 'result', letter: null, error: e.message });
   }
